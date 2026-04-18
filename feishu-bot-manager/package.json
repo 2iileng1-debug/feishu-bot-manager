@@ -1,0 +1,10 @@
+{
+  "name": "feishu-bot-manager",
+  "version": "1.2.0",
+  "description": "feishu bot manager with preflight agent workflow and safety checks",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "check": "node --check index.js && node --check lib/validator.js"
+  }
+}
