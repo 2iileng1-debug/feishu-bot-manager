@@ -175,6 +175,7 @@ function parseAgentAddResult(extractJsonObject, rawOutput) {
 
 module.exports = {
   sanitizeAgentId,
+  ensureDir,
   bootstrapGovernanceAndMemory,
   defaultWorkspaceForAgent,
   parseAgentAddResult
