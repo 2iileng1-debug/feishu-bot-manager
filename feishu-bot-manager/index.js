@@ -35,6 +35,7 @@ const { loadConfig, saveConfig, createBackup, validateWithOpenClawSchema } = req
 const { colors, log, deepClone, parseBoolean, parseArgs } = require('./lib/cli-helpers');
 const { printSummary, showHelp } = require('./lib/output');
 const { getQuickModeSettings, validateQuickModeOptions } = require('./lib/quick-mode');
+const { resolveAgentPlanContext, createAgentViaOpenClaw, setAgentIdentity } = require('./lib/agent-plan');
 
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
 const CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(HOME_DIR, '.openclaw', 'openclaw.json');
@@ -207,30 +208,33 @@ function quickMode(options) {
 
 
 function createAgentFromPlan(plan, options) {
-  const rawAgentId = options.agentid || options.newagentid || options.agentname || '';
-  const agentId = sanitizeAgentId(rawAgentId || plan.coreRequirement);
+  const { agentId, workspace } = resolveAgentPlanContext({
+    plan,
+    options,
+    sanitizeAgentId,
+    validateAgentId,
+    defaultWorkspaceForAgent,
+    homeDir: HOME_DIR
+  });
 
-  if (!validateAgentId(agentId)) {
-    throw new Error(`Invalid generated agent id: ${agentId}`);
-  }
-
-  const workspace = options.agentworkspace || defaultWorkspaceForAgent(HOME_DIR, agentId);
   ensureDir(workspace);
 
-  const addArgs = ['agents', 'add', agentId, '--workspace', workspace, '--non-interactive', '--json'];
-  if (options.model) addArgs.push('--model', options.model);
-
-  const addResult = runOpenClaw(addArgs);
-  const addOutput = `${addResult.stdout}\n${addResult.stderr}`;
-  const addParsed = parseAgentAddResult(extractJsonObject, addOutput);
-
-  if (addResult.error || addResult.code !== 0 || !addParsed) {
-    throw new Error(`Failed to create agent. Output:\n${addOutput}`);
-  }
+  createAgentViaOpenClaw({
+    agentId,
+    workspace,
+    model: options.model,
+    runOpenClaw,
+    extractJsonObject,
+    parseAgentAddResult
+  });
 
   const identityName = options.agentdisplayname || options.agentname || agentId;
-  const setIdentityArgs = ['agents', 'set-identity', '--agent', agentId, '--workspace', workspace, '--name', identityName, '--json'];
-  const setIdentityResult = runOpenClaw(setIdentityArgs);
+  const setIdentityResult = setAgentIdentity({
+    agentId,
+    workspace,
+    identityName,
+    runOpenClaw
+  });
   if (setIdentityResult.error || setIdentityResult.code !== 0) {
     log.warning('Agent created, but set-identity failed. You can run it manually later.');
   }
