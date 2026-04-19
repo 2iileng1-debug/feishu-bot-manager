@@ -33,6 +33,7 @@ const { runPreflightWizard } = require('./lib/wizard');
 const { quoteWindowsArg, extractJsonObject, createOpenClawRunner } = require('./lib/openclaw-runtime');
 const { loadConfig, saveConfig, createBackup, validateWithOpenClawSchema } = require('./lib/config-store');
 const { colors, log, deepClone, parseBoolean, parseArgs } = require('./lib/cli-helpers');
+const { printSummary, showHelp } = require('./lib/output');
 
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
 const CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(HOME_DIR, '.openclaw', 'openclaw.json');
@@ -89,22 +90,13 @@ function safeValidateWithOpenClawSchema(config) {
   });
 }
 
-function printSummary({ accountId, mode, agentId, chatId, dryRun, setDmScope, restart }) {
-  const lines = formatSummaryLines({
+function renderSummary(args) {
+  printSummary({
+    formatSummaryLines,
+    log,
     configPath: CONFIG_PATH,
-    accountId,
-    mode,
-    agentId,
-    chatId,
-    dryRun,
-    setDmScope,
-    restart
+    ...args
   });
-
-  for (const line of lines) {
-    if (line === 'Summary') log.bold(line);
-    else console.log(line);
-  }
 }
 
 function quickMode(options) {
@@ -193,7 +185,7 @@ function quickMode(options) {
     process.exit(1);
   }
 
-  printSummary({ accountId, mode, agentId: options.agentid, chatId: options.chatid, dryRun, setDmScope, restart });
+  renderSummary({ accountId, mode, agentId: options.agentid, chatId: options.chatid, dryRun, setDmScope, restart });
 
   if (dryRun) {
     log.warning('Dry run only. No files were modified.');
@@ -265,71 +257,19 @@ function createAgentFromPlan(plan, options) {
   return { agentId, workspace };
 }
 
-function showRoutingOptions() {
-  console.log(`
-${colors.bold}Routing Modes${colors.reset}
-
-${colors.bold}1) account${colors.reset}
-  Route all messages from one Feishu account to one Agent.
-
-${colors.bold}2) group${colors.reset}
-  Route one Feishu group (peer.id = oc_xxx) to one Agent.
-
-Group routing usually has higher matching priority than account routing.
-`);
-}
-
-function showHelp() {
-  showRoutingOptions();
-  console.log(`
-${colors.bold}Usage:${colors.reset}
-  node index.js [options]
-
-${colors.bold}Main Flow:${colors.reset}
-  - If --app-id/--app-secret are missing, script starts preflight wizard:
-    1) Agent creation workflow (direct / requirement-first)
-    2) Governance + memory bootstrap for created agent
-    3) Show Feishu creation link and wait for credentials
-  - Then applies Feishu account/binding config safely.
-
-${colors.bold}Required for config write:${colors.reset}
-  --app-id <id>           Feishu App ID (cli_xxx)
-  --app-secret <secret>   Feishu App Secret
-
-${colors.bold}Optional:${colors.reset}
-  --account-id <id>       Account identifier (default: bot-<timestamp>)
-  --bot-name <name>       Bot display name (writes field: name)
-  --dm-policy <policy>    open/pairing/allowlist
-  --agent-id <id>         Agent ID for route binding
-  --routing-mode <mode>   account/group (default: account)
-  --chat-id <id>          Group chat ID (required when routing-mode=group)
-  --dry-run               Validate only, no write
-  --set-dm-scope          Run: openclaw config set session.dmScope "${DMSCOPE_VALUE}"
-  --restart               Restart gateway after write
-  --wizard <bool>         Enable/disable interactive preflight when credentials are missing (default: true)
-  --openclaw-profile <p>  Optional openclaw profile (useful for testing)
-  --agent-workflow <m>    Reserved: direct/requirement-first (wizard hints)
-  --new-agent-id <id>     Reserved: pre-specified new agent id for wizard
-  --agent-workspace <dir> Reserved: pre-specified workspace for wizard
-  --help, -h              Show help
-
-${colors.bold}Examples:${colors.reset}
-  1) Fully guided preflight (recommended):
-     node index.js
-
-  2) Direct dry-run write path:
-     node index.js --app-id cli_xxx --app-secret yyy --agent-id recruiter --routing-mode account --dry-run
-
-  3) Isolated profile test:
-     node index.js --openclaw-profile test --wizard true
-`);
+function renderHelp() {
+  showHelp({
+    colors,
+    dmscopeValue: DMSCOPE_VALUE,
+    feishuCreateUrl: FEISHU_CREATE_URL
+  });
 }
 
 async function main() {
   const options = parseArgs();
 
   if (options.help || options.h) {
-    showHelp();
+    renderHelp();
     process.exit(0);
   }
 
