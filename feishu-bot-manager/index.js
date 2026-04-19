@@ -3,10 +3,8 @@
  * feishu-bot-manager (cross-platform + preflight workflow)
  */
 
-const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
 
 const {
   validateAppId,
@@ -32,6 +30,8 @@ const {
   formatSummaryLines
 } = require('./lib/config-workflow');
 const { runPreflightWizard } = require('./lib/wizard');
+const { quoteWindowsArg, extractJsonObject, createOpenClawRunner } = require('./lib/openclaw-runtime');
+const { loadConfig, saveConfig, createBackup, validateWithOpenClawSchema } = require('./lib/config-store');
 
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
 const CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(HOME_DIR, '.openclaw', 'openclaw.json');
@@ -92,101 +92,16 @@ function parseArgs() {
   return options;
 }
 
-function withOpenClawProfile(args) {
-  if (!OPENCLAW_PROFILE) return args;
-  return ['--profile', OPENCLAW_PROFILE, ...args];
-}
+const { runOpenClaw } = createOpenClawRunner({
+  openclawBin: OPENCLAW_BIN,
+  platform: process.platform,
+  getProfile: () => OPENCLAW_PROFILE,
+  envBase: process.env
+});
 
-function quoteWindowsArg(arg) {
-  const text = String(arg);
-  if (/^[a-zA-Z0-9._:/=-]+$/.test(text)) return text;
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
-function runOpenClaw(args, opts = {}) {
-  const finalArgs = withOpenClawProfile(args);
-  let child;
-
-  if (process.platform === 'win32') {
-    const command = [OPENCLAW_BIN, ...finalArgs.map(quoteWindowsArg)].join(' ');
-    child = spawnSync('cmd.exe', ['/d', '/s', '/c', command], {
-      encoding: 'utf8',
-      shell: false,
-      stdio: opts.stdio || 'pipe',
-      env: opts.env || process.env
-    });
-  } else {
-    child = spawnSync(OPENCLAW_BIN, finalArgs, {
-      encoding: 'utf8',
-      shell: false,
-      stdio: opts.stdio || 'pipe',
-      env: opts.env || process.env
-    });
-  }
-
-  return {
-    code: child ? child.status : 1,
-    error: child ? child.error || null : new Error('failed to spawn openclaw'),
-    stdout: child ? child.stdout || '' : '',
-    stderr: child ? child.stderr || '' : ''
-  };
-}
-
-function extractJsonObject(rawText) {
-  const text = String(rawText || '').trim();
-  if (!text) return null;
-
+function safeLoadConfig() {
   try {
-    return JSON.parse(text);
-  } catch (_) {
-    // Continue with mixed-output extraction.
-  }
-
-  const start = text.indexOf('{');
-  if (start < 0) return null;
-
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === '\\') {
-        escaped = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
-      continue;
-    }
-
-    if (ch === '"') {
-      inString = true;
-      continue;
-    }
-    if (ch === '{') depth++;
-    if (ch === '}') depth--;
-
-    if (depth === 0) {
-      const snippet = text.slice(start, i + 1);
-      try {
-        return JSON.parse(snippet);
-      } catch (_) {
-        return null;
-      }
-    }
-  }
-
-  return null;
-}
-
-function loadConfig() {
-  try {
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
-    return JSON.parse(content);
+    return loadConfig(CONFIG_PATH);
   } catch (err) {
     log.error(`Failed to read config: ${err.message}`);
     log.info(`Config path: ${CONFIG_PATH}`);
@@ -194,63 +109,33 @@ function loadConfig() {
   }
 }
 
-function saveConfig(config) {
+function safeSaveConfig(config) {
   try {
-    fs.writeFileSync(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+    saveConfig(CONFIG_PATH, config);
   } catch (err) {
     log.error(`Failed to write config: ${err.message}`);
     process.exit(1);
   }
 }
 
-function createBackup() {
+function safeCreateBackup() {
   try {
-    if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = path.join(BACKUP_DIR, `openclaw.json.${timestamp}.bak`);
-    fs.copyFileSync(CONFIG_PATH, backupPath);
-    return backupPath;
+    return createBackup(CONFIG_PATH, BACKUP_DIR);
   } catch (err) {
     log.error(`Failed to create backup: ${err.message}`);
     process.exit(1);
   }
 }
 
-function validateWithOpenClawSchema(config) {
-  const tempPath = path.join(path.dirname(CONFIG_PATH), `.openclaw.validate.${Date.now()}.${process.pid}.json`);
-  fs.writeFileSync(tempPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
-
-  try {
-    const env = { ...process.env, OPENCLAW_CONFIG_PATH: tempPath };
-    const result = runOpenClaw(['config', 'validate', '--json'], { env });
-
-    if (result.error) {
-      return {
-        valid: false,
-        issues: [{ path: 'config', message: `Failed to run ${OPENCLAW_BIN}: ${result.error.message}` }]
-      };
-    }
-
-    const parsed = extractJsonObject(`${result.stdout}\n${result.stderr}`);
-    if (parsed && typeof parsed.valid === 'boolean') {
-      return {
-        valid: parsed.valid,
-        issues: Array.isArray(parsed.issues) ? parsed.issues : []
-      };
-    }
-
-    if (result.code === 0) return { valid: true, issues: [] };
-    return {
-      valid: false,
-      issues: [{ path: 'config', message: `Unable to parse openclaw validate output: ${(result.stderr || result.stdout || '').trim()}` }]
-    };
-  } finally {
-    try {
-      fs.unlinkSync(tempPath);
-    } catch (_) {
-      // ignore temp cleanup errors
-    }
-  }
+function safeValidateWithOpenClawSchema(config) {
+  return validateWithOpenClawSchema({
+    config,
+    configPath: CONFIG_PATH,
+    runOpenClaw,
+    extractJsonObject,
+    openclawBin: OPENCLAW_BIN,
+    envBase: process.env
+  });
 }
 
 function printSummary({ accountId, mode, agentId, chatId, dryRun, setDmScope, restart }) {
@@ -311,7 +196,7 @@ function quickMode(options) {
     }
   }
 
-  const config = loadConfig();
+  const config = safeLoadConfig();
   const candidate = deepClone(config);
   ensureFeishuConfig(candidate);
 
@@ -348,7 +233,7 @@ function quickMode(options) {
     process.exit(1);
   }
 
-  const schemaResult = validateWithOpenClawSchema(candidate);
+  const schemaResult = safeValidateWithOpenClawSchema(candidate);
   if (!schemaResult.valid) {
     log.error('OpenClaw schema validation failed. Write blocked.');
     for (const issue of schemaResult.issues) {
@@ -364,8 +249,8 @@ function quickMode(options) {
     return;
   }
 
-  const backupPath = createBackup();
-  saveConfig(candidate);
+  const backupPath = safeCreateBackup();
+  safeSaveConfig(candidate);
   log.success(`Config written: ${CONFIG_PATH}`);
   log.success(`Backup created: ${backupPath}`);
 
