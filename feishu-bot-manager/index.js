@@ -37,6 +37,7 @@ const { printSummary, showHelp } = require('./lib/output');
 const { getQuickModeSettings, validateQuickModeOptions } = require('./lib/quick-mode');
 const { resolveAgentPlanContext, createAgentViaOpenClaw, setAgentIdentity } = require('./lib/agent-plan');
 const { applyAccountRouting, validateCandidateConfig, finalizeConfigApply } = require('./lib/config-apply');
+const { handleHelpOption, resolveWizardState, maybeRunWizard } = require('./lib/main-flow');
 
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
 const CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(HOME_DIR, '.openclaw', 'openclaw.json');
@@ -215,45 +216,31 @@ function renderHelp() {
 async function main() {
   const options = parseArgs();
 
-  if (options.help || options.h) {
-    renderHelp();
+  if (handleHelpOption({ options, renderHelp })) {
     process.exit(0);
   }
 
   OPENCLAW_PROFILE = (options.openclawprofile || '').trim();
 
-  const hasCredentials = Boolean(options.appid && options.appsecret);
-  const wizardEnabled = parseBoolean(options.wizard, true);
+  const { hasCredentials, wizardEnabled } = resolveWizardState({ options, parseBoolean });
 
-  let mergedOptions = { ...options };
+  const wizardResult = await maybeRunWizard({
+    mergedOptions: { ...options },
+    hasCredentials,
+    wizardEnabled,
+    log,
+    feishuCreateUrl: FEISHU_CREATE_URL,
+    runPreflightWizard,
+    parseBoolean,
+    createAgentFromPlan,
+    stdinIsTTY: process.stdin.isTTY
+  });
 
-  if (!hasCredentials) {
-    if (!wizardEnabled) {
-      log.error('Missing --app-id/--app-secret and wizard is disabled.');
-      console.log(`Create Feishu bot first: ${FEISHU_CREATE_URL}`);
-      process.exit(1);
-    }
-
-    if (!process.stdin.isTTY) {
-      log.error('Interactive wizard requires a TTY. Please run in an interactive terminal.');
-      console.log(`Create Feishu bot first: ${FEISHU_CREATE_URL}`);
-      process.exit(1);
-    }
-
-    mergedOptions = await runPreflightWizard({
-      baseOptions: mergedOptions,
-      log,
-      parseBoolean,
-      createAgentFromPlan,
-      feishuCreateUrl: FEISHU_CREATE_URL
-    });
-    if (!mergedOptions.appid || !mergedOptions.appsecret) {
-      log.warning('No app credentials collected. Exiting without config changes.');
-      process.exit(0);
-    }
+  if (wizardResult.shouldExit) {
+    process.exit(wizardResult.exitCode);
   }
 
-  quickMode(mergedOptions);
+  quickMode(wizardResult.options);
 }
 
 main().catch((err) => {
