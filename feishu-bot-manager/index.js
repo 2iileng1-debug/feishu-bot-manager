@@ -32,6 +32,7 @@ const {
 const { runPreflightWizard } = require('./lib/wizard');
 const { quoteWindowsArg, extractJsonObject, createOpenClawRunner } = require('./lib/openclaw-runtime');
 const { loadConfig, saveConfig, createBackup, validateWithOpenClawSchema } = require('./lib/config-store');
+const { colors, log, deepClone, parseBoolean, parseArgs } = require('./lib/cli-helpers');
 
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
 const CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(HOME_DIR, '.openclaw', 'openclaw.json');
@@ -41,56 +42,6 @@ const DMSCOPE_VALUE = 'per-account-channel-peer';
 const FEISHU_CREATE_URL = 'https://open.feishu.cn/page/openclaw?form=multiAgent';
 
 let OPENCLAW_PROFILE = '';
-
-const colors = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  red: '\x1b[31m',
-  cyan: '\x1b[36m',
-  gray: '\x1b[90m',
-  bold: '\x1b[1m'
-};
-
-const log = {
-  info: (msg) => console.log(`${colors.cyan}[INFO]${colors.reset} ${msg}`),
-  success: (msg) => console.log(`${colors.green}[OK]${colors.reset} ${msg}`),
-  warning: (msg) => console.log(`${colors.yellow}[WARN]${colors.reset} ${msg}`),
-  error: (msg) => console.log(`${colors.red}[ERR]${colors.reset} ${msg}`),
-  preview: (msg) => console.log(`${colors.gray}${msg}${colors.reset}`),
-  bold: (msg) => console.log(`${colors.bold}${msg}${colors.reset}`)
-};
-
-function deepClone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function parseBoolean(value, fallback = false) {
-  if (typeof value === 'boolean') return value;
-  if (value === undefined || value === null) return fallback;
-  const normalized = String(value).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false;
-  return fallback;
-}
-
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const options = {};
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (!arg.startsWith('--')) continue;
-
-    const key = arg.slice(2).replace(/-/g, '');
-    const hasNext = args[i + 1] && !args[i + 1].startsWith('--');
-    const value = hasNext ? args[i + 1] : 'true';
-    options[key] = value;
-    if (hasNext) i++;
-  }
-
-  return options;
-}
 
 const { runOpenClaw } = createOpenClawRunner({
   openclawBin: OPENCLAW_BIN,
