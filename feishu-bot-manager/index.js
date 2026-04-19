@@ -34,6 +34,7 @@ const { quoteWindowsArg, extractJsonObject, createOpenClawRunner } = require('./
 const { loadConfig, saveConfig, createBackup, validateWithOpenClawSchema } = require('./lib/config-store');
 const { colors, log, deepClone, parseBoolean, parseArgs } = require('./lib/cli-helpers');
 const { printSummary, showHelp } = require('./lib/output');
+const { getQuickModeSettings, validateQuickModeOptions } = require('./lib/quick-mode');
 
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
 const CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(HOME_DIR, '.openclaw', 'openclaw.json');
@@ -102,41 +103,22 @@ function renderSummary(args) {
 function quickMode(options) {
   log.info('Applying Feishu account/binding configuration...');
 
-  const mode = options.routingmode || 'account';
-  const accountId = options.accountid || `bot-${Date.now()}`;
-  const dryRun = parseBoolean(options.dryrun, false);
-  const restart = parseBoolean(options.restart, false);
-  const setDmScope = parseBoolean(options.setdmscope, false);
+  const { mode, accountId, dryRun, restart, setDmScope } = getQuickModeSettings(options, parseBoolean);
 
-  if (!options.appid || !options.appsecret) {
-    log.error('Missing required args: --app-id and --app-secret');
+  try {
+    validateQuickModeOptions({
+      options,
+      mode,
+      accountId,
+      validateAppId,
+      validateAccountId,
+      validateRoutingMode,
+      validateDmPolicy,
+      validateChatId
+    });
+  } catch (err) {
+    log.error(err.message);
     process.exit(1);
-  }
-  if (!validateAppId(options.appid)) {
-    log.error('Invalid App ID format, expected cli_xxx');
-    process.exit(1);
-  }
-  if (!validateAccountId(accountId)) {
-    log.error('Invalid account-id format, expected lowercase letters/numbers/hyphen');
-    process.exit(1);
-  }
-  if (!validateRoutingMode(mode)) {
-    log.error('routing-mode must be account or group');
-    process.exit(1);
-  }
-  if (options.dmpolicy && !validateDmPolicy(options.dmpolicy)) {
-    log.error('dm-policy must be open/pairing/allowlist');
-    process.exit(1);
-  }
-  if (mode === 'group') {
-    if (!options.chatid) {
-      log.error('group routing requires --chat-id');
-      process.exit(1);
-    }
-    if (!validateChatId(options.chatid)) {
-      log.error('Invalid chat-id format, expected oc_xxx');
-      process.exit(1);
-    }
   }
 
   const config = safeLoadConfig();
