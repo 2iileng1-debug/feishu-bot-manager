@@ -7,9 +7,18 @@
 项目当前已完成：
 
 - GitHub 仓库已稳定使用 `feishu-bot-manager`
-- `main` 分支与 `v1.2.1` release/tag 已落到远端
-- 已补齐 `LICENSE`、测试、CI、发布说明
+- `main` 分支与 `v1.2.1` tag 已落到远端
+- 已补齐测试与发布说明
 - 已完成多轮**低风险模块化重构**，入口文件从大块混合逻辑逐步收敛为主流程 orchestrator
+
+本次仓库收尾已补齐：
+
+- `LICENSE`（MIT）
+- GitHub Actions CI（push / pull_request 自动跑 `npm run verify`）
+
+说明：
+- 若 GitHub Release 页面尚未创建，可在已有 `v1.2.1` tag 基础上补建 Release
+- README 现在与仓库真实状态保持一致
 
 ## 你会得到什么
 
@@ -97,6 +106,8 @@ npm test
 npm run check
 npm run verify
 ```
+
+CI 会在 `push` 和 `pull_request` 时自动执行 `npm run verify`。
 
 ## 文件说明
 
