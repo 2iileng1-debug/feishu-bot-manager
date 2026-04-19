@@ -36,6 +36,7 @@ const { colors, log, deepClone, parseBoolean, parseArgs } = require('./lib/cli-h
 const { printSummary, showHelp } = require('./lib/output');
 const { getQuickModeSettings, validateQuickModeOptions } = require('./lib/quick-mode');
 const { resolveAgentPlanContext, createAgentViaOpenClaw, setAgentIdentity } = require('./lib/agent-plan');
+const { applyAccountRouting, validateCandidateConfig, finalizeConfigApply } = require('./lib/config-apply');
 
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
 const CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(HOME_DIR, '.openclaw', 'openclaw.json');
@@ -129,81 +130,41 @@ function quickMode(options) {
   const accountConfig = buildAccountConfig(options, candidate.channels.feishu, deepClone);
   candidate.channels.feishu.accounts[accountId] = accountConfig;
 
-  if (options.agentid) {
-    if (mode === 'account') {
-      upsertBinding(candidate, {
-        type: 'route',
-        agentId: options.agentid,
-        match: { channel: 'feishu', accountId }
-      });
-      log.success(`Prepared account routing: ${options.agentid} <- ${accountId}`);
-    } else {
-      upsertBinding(candidate, {
-        type: 'route',
-        agentId: options.agentid,
-        match: {
-          channel: 'feishu',
-          peer: { kind: 'group', id: options.chatid }
-        }
-      });
-      log.success(`Prepared group routing: ${options.agentid} <- ${options.chatid}`);
-    }
-  } else {
-    log.warning('No --agent-id supplied, only account config will be updated.');
-  }
+  applyAccountRouting({
+    candidate,
+    options,
+    mode,
+    accountId,
+    upsertBinding,
+    log
+  });
 
-  const localErrors = validateConfig(candidate);
-  if (localErrors.length > 0) {
-    log.error('Local validation failed:');
-    localErrors.forEach((item) => log.preview(`  - ${item}`));
-    process.exit(1);
-  }
-
-  const schemaResult = safeValidateWithOpenClawSchema(candidate);
-  if (!schemaResult.valid) {
-    log.error('OpenClaw schema validation failed. Write blocked.');
-    for (const issue of schemaResult.issues) {
-      log.preview(`  - ${issue.path || 'unknown'}: ${issue.message || 'invalid'}`);
-    }
+  const validationResult = validateCandidateConfig({
+    candidate,
+    validateConfig,
+    validateWithSchema: safeValidateWithOpenClawSchema,
+    log
+  });
+  if (!validationResult.ok) {
     process.exit(1);
   }
 
   renderSummary({ accountId, mode, agentId: options.agentid, chatId: options.chatid, dryRun, setDmScope, restart });
 
-  if (dryRun) {
-    log.warning('Dry run only. No files were modified.');
-    return;
-  }
-
-  const backupPath = safeCreateBackup();
-  safeSaveConfig(candidate);
-  log.success(`Config written: ${CONFIG_PATH}`);
-  log.success(`Backup created: ${backupPath}`);
-
-  if (setDmScope) {
-    const result = runOpenClaw(['config', 'set', 'session.dmScope', DMSCOPE_VALUE]);
-    if (result.error || result.code !== 0) {
-      log.warning('Failed to set dmScope automatically. Please run manually:');
-      console.log(`  openclaw config set session.dmScope "${DMSCOPE_VALUE}"`);
-    } else {
-      log.success(`dmScope set to ${DMSCOPE_VALUE}`);
-    }
-  }
-
-  if (restart) {
-    log.warning('Restarting gateway...');
-    const result = runOpenClaw(['gateway', 'restart'], { stdio: 'inherit' });
-    if (result.error || result.code !== 0) {
-      log.warning('Gateway restart failed. Please run manually: openclaw gateway restart');
-    } else {
-      log.success('Gateway restarted.');
-    }
-  } else {
-    log.info('Gateway restart skipped. Run manually if needed: openclaw gateway restart');
-  }
-
-  console.log('Rollback command:');
-  console.log(`  ${getRestoreCommand(backupPath, CONFIG_PATH, process.platform)}`);
+  finalizeConfigApply({
+    candidate,
+    dryRun,
+    createBackup: safeCreateBackup,
+    saveConfig: safeSaveConfig,
+    log,
+    configPath: CONFIG_PATH,
+    getRestoreCommand,
+    platform: process.platform,
+    setDmScope,
+    dmScopeValue: DMSCOPE_VALUE,
+    runOpenClaw,
+    restart
+  });
 }
 
 
