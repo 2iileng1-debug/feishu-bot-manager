@@ -1,81 +1,81 @@
-﻿---
+---
 name: feishu-bot-manager
-description: 瀹夊叏鍦版柊澧炴垨鏇存柊 OpenClaw 椋炰功鏈哄櫒浜鸿处鎴凤紝骞跺湪璇诲彇 app-id/app-secret 鍓嶆墽琛?Agent 鍒涘缓鍓嶇疆娴佺▼锛堢洿鎺ュ垱寤烘垨鍏堟⒊鐞嗛渶姹傚杞彁闂級锛岃嚜鍔ㄦ敞鍏ユ不鐞嗕笌璁板繂鍩虹嚎銆?
+description: 安全地新增或更新 OpenClaw 飞书机器人账户，并在读取 app-id/app-secret 前执行 Agent 创建前置流程（直接创建或先梳理需求多轮提问），自动注入治理与记忆基线。
 user-invokable: true
 invocations:
   - words:
-      - 娣诲姞椋炰功鏈哄櫒浜?
-      - 閰嶇疆椋炰功鏈哄櫒浜?
-      - 鏂板椋炰功璐︽埛
-      - 娣诲姞鏈哄櫒浜鸿处鎴?
+      - 添加飞书机器人
+      - 配置飞书机器人
+      - 新增飞书账户
+      - 添加机器人账户
       - feishu bot
-      - 椋炰功澶氳处鎴?
-      - 鍒涘缓agent骞舵帴鍏ラ涔?
-    description: 鍏堝垱寤?姊崇悊 Agent锛屽啀鎺ュ叆椋炰功鏈哄櫒浜?
+      - 飞书多账户
+      - 创建agent并接入飞书
+    description: 先创建/梳理 Agent，再接入飞书机器人
 ---
 
 # feishu-bot-manager
 
-璺ㄥ钩鍙帮紙Windows/macOS/Linux锛夐涔﹀璐︽埛鎺ュ叆宸ュ叿锛岄粯璁ゅ畨鍏ㄦā寮忋€?
+跨平台（Windows/macOS/Linux）飞书多账户接入工具，默认安全模式。
 
-## 鍓嶇疆宸ヤ綔娴侊紙鍦ㄨ鍙?app-id/app-secret 涔嬪墠锛?
+## 前置工作流（在读取 app-id/app-secret 之前）
 
-### 宸ヤ綔娴?1锛欰gent 鍒涘缓鏂瑰紡閫夋嫨
+### 工作流 1：Agent 创建方式选择
 
-褰撶敤鎴锋彁鍑衡€滃垱寤?Agent鈥濇椂锛屽厛闂細
-1. 鐩存帴鍒涘缓 Agent
-2. 鍏堟⒊鐞?Agent 宸ヤ綔鍐呭
+当用户提出“创建 Agent”时，先问：
+1. 直接创建 Agent
+2. 先梳理 Agent 工作内容
 
-濡傛灉閫夆€滅洿鎺ュ垱寤衡€濓細
-- 鎸夌敤鎴峰綋鍓嶉渶姹傜洿鎺ュ垱寤?Agent銆?
+如果选“直接创建”：
+- 按用户当前需求直接创建 Agent。
 
-濡傛灉閫夆€滃厛姊崇悊宸ヤ綔鍐呭鈥濓細
-- 鐢ㄥ杞彁闂緞娓呯洰鏍囥€佽緭鍏ャ€佽緭鍑恒€佽竟鐣屻€佸伐鍏枫€佽妭濂忥紱
-- 鐩村埌浣犲垽鏂俊鎭冻澶燂紝鎴栫敤鎴锋槑纭鈥滃彲浠ヤ簡鈥濓紱
-- 鍐嶅垱寤?Agent銆?
+如果选“先梳理工作内容”：
+- 用多轮提问澄清目标、输入、输出、边界、工具、节奏；
+- 直到你判断信息足够，或用户明确说“可以了”；
+- 再创建 Agent。
 
-### 宸ヤ綔娴?2锛氬垱寤?Agent 鏃剁殑榛樿娌荤悊涓庤蹇嗗熀绾?
+### 工作流 2：创建 Agent 时的默认治理与记忆基线
 
-鍒涘缓瀹屾垚鍚庤嚜鍔ㄥ啓鍏ヤ互涓嬪熀绾匡細
-1. 鐏甸瓊/韬唤鍐欏叆纭闂搁棬锛圫OUL.md / IDENTITY.md锛?
-2. 鍦ㄨ繘鍖栬鍒欐簮澶村啓鍏モ€滅姝㈠彧鍙ｅご涓嶆墽琛屸€?
-3. 榛樿娌荤悊瑙勫垯锛氭不鐞嗘枃浠朵慨鏀瑰繀椤荤‘璁?
-4. Skill 鏂囨。涓庣ず渚嬮厤缃悓姝ユ洿鏂?
-5. 闃插け蹇嗗熀绾匡細姣忔棩璁板繂 `memory/YYYY-MM-DD.md` + 闀挎湡璁板繂 `MEMORY.md`
+创建完成后自动写入以下基线：
+1. 灵魂/身份写入确认闸门（SOUL.md / IDENTITY.md）
+2. 在进化规则源头写入“禁止只口头不执行”
+3. 默认治理规则：治理文件修改必须确认
+4. Skill 文档与示例配置同步更新
+5. 防失忆基线：每日记忆 `memory/YYYY-MM-DD.md` + 长期记忆 `MEMORY.md`
 
-### 宸ヤ綔娴?3锛氳緭鍑洪涔﹀垱寤洪摼鎺ュ苟绛夊緟鍑嵁
+### 工作流 3：输出飞书创建链接并等待凭据
 
-鍚戠敤鎴疯緭鍑猴細
+向用户输出：
 https://open.feishu.cn/page/openclaw?form=multiAgent
 
-绛夊緟鐢ㄦ埛杈撳叆锛?
+等待用户输入：
 - `--app-id`
 - `--app-secret`
 
-鐒跺悗鍐嶆墽琛岄涔﹁处鎴峰啓鍏ヤ笌璺敱缁戝畾銆?
+然后再执行飞书账户写入与路由绑定。
 
-## 璺敱妯″紡
+## 路由模式
 
-### account锛堣处鎴风骇锛?
-璇ラ涔﹁处鎴锋墍鏈夋秷鎭?-> 鎸囧畾 Agent
+### account（账户级）
+该飞书账户所有消息 -> 指定 Agent
 
-### group锛堢兢鑱婄骇锛?
-鎸囧畾缇よ亰娑堟伅 -> 鎸囧畾 Agent
+### group（群聊级）
+指定群聊消息 -> 指定 Agent
 
-## 瀹夊叏鏈哄埗
+## 安全机制
 
-1. 鍐欏叆鍓嶈嚜鍔ㄥ浠?`openclaw.json`
-2. 鏈湴鏍￠獙 + `openclaw config validate --json`
-3. 鏍￠獙澶辫触闃绘鍐欏叆
-4. 榛樿涓嶈嚜鍔ㄩ噸鍚?Gateway锛堥渶鏄惧紡 `--restart`锛?
+1. 写入前自动备份 `openclaw.json`
+2. 本地校验 + `openclaw config validate --json`
+3. 校验失败阻止写入
+4. 默认不自动重启 Gateway（需显式 `--restart`）
 
-## 鍛戒护绀轰緥
+## 命令示例
 
 ```bash
-# 鎺ㄨ崘锛氬叏浜や簰鍓嶇疆娴佺▼锛堜細鍏堣蛋 Agent 鍒涘缓涓庨渶姹傛緞娓咃級
+# 推荐：全交互前置流程（会先走 Agent 创建与需求澄清）
 node index.js
 
-# 鐩存帴鍙傛暟妯″紡锛堜笉璧板墠缃棶绛旓級
+# 直接参数模式（不走前置问答）
 node index.js \
   --app-id cli_xxx \
   --app-secret yyy \
@@ -84,25 +84,24 @@ node index.js \
   --routing-mode account \
   --dry-run
 
-# 闅旂 profile 娴嬭瘯
+# 隔离 profile 测试
 node index.js --openclaw-profile test --wizard true
 ```
 
-## 鍙傛暟
+## 参数
 
-| 鍙傛暟 | 璇存槑 |
+| 参数 | 说明 |
 |---|---|
-| `--app-id` | 椋炰功 App ID锛坄cli_xxx`锛?|
-| `--app-secret` | 椋炰功 App Secret |
-| `--account-id` | 璐︽埛 ID锛堥粯璁よ嚜鍔ㄧ敓鎴愶級 |
-| `--bot-name` | 鏈哄櫒浜哄悕锛堝啓鍏?`name` 瀛楁锛?|
+| `--app-id` | 飞书 App ID（`cli_xxx`） |
+| `--app-secret` | 飞书 App Secret |
+| `--account-id` | 账户 ID（默认自动生成） |
+| `--bot-name` | 机器人名（写入 `name` 字段） |
 | `--dm-policy` | `open (fixed)` |
-| `--agent-id` | 缁戝畾鐨?Agent ID |
+| `--agent-id` | 绑定的 Agent ID |
 | `--routing-mode` | `account/group` |
-| `--chat-id` | 缇よ亰 ID锛坄group` 妯″紡蹇呭～锛?|
-| `--dry-run` | 浠呮牎楠岋紝涓嶅啓鍏?|
-| `--set-dm-scope` | 鍐欏叆鍚庤缃?`session.dmScope` |
-| `--restart` | 鍐欏叆鍚庤嚜鍔ㄩ噸鍚?Gateway |
-| `--wizard` | 鏃犲嚟鎹椂鏄惁鍚敤浜や簰鍓嶇疆娴佺▼锛堥粯璁ゅ惎鐢級 |
-| `--openclaw-profile` | 鍙€?profile锛堜究浜庨殧绂绘祴璇曪級 |
-
+| `--chat-id` | 群聊 ID（`group` 模式必填） |
+| `--dry-run` | 仅校验，不写入 |
+| `--set-dm-scope` | 写入后设置 `session.dmScope` |
+| `--restart` | 写入后自动重启 Gateway |
+| `--wizard` | 无凭据时是否启用交互前置流程（默认启用） |
+| `--openclaw-profile` | 可选 profile（便于隔离测试） |
