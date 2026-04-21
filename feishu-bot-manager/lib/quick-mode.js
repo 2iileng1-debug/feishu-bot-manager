@@ -31,7 +31,10 @@ function validateQuickModeOptions({
     throw new Error('routing-mode must be account or group');
   }
   if (options.dmpolicy && !validateDmPolicy(options.dmpolicy)) {
-    throw new Error('dm-policy must be open/pairing/allowlist');
+    throw new Error('dm-policy must be open');
+  }
+  if (options.dmpolicy && options.dmpolicy !== 'open') {
+    throw new Error('dm-policy is fixed to open for account creation');
   }
   if (mode === 'group') {
     if (!options.chatid) {

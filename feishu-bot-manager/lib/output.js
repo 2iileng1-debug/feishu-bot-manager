@@ -50,7 +50,7 @@ ${colors.bold}Required for config write:${colors.reset}
 ${colors.bold}Optional:${colors.reset}
   --account-id <id>       Account identifier (default: bot-<timestamp>)
   --bot-name <name>       Bot display name (writes field: name)
-  --dm-policy <policy>    open/pairing/allowlist
+  --dm-policy <policy>    open (fixed)
   --agent-id <id>         Agent ID for route binding
   --routing-mode <mode>   account/group (default: account)
   --chat-id <id>          Group chat ID (required when routing-mode=group)

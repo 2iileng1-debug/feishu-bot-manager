@@ -29,7 +29,7 @@ test('validateQuickModeOptions accepts a valid group routing config', () => {
         appid: 'cli_abc123',
         appsecret: 'secret',
         chatid: 'oc_123',
-        dmpolicy: 'pairing'
+        dmpolicy: 'open'
       },
       mode: 'group',
       accountId: 'bot-sales',
@@ -40,6 +40,26 @@ test('validateQuickModeOptions accepts a valid group routing config', () => {
       validateChatId: (value) => value.startsWith('oc_')
     });
   });
+});
+
+test('validateQuickModeOptions rejects non-open dm policy', () => {
+  assert.throws(
+    () => validateQuickModeOptions({
+      options: {
+        appid: 'cli_abc123',
+        appsecret: 'secret',
+        dmpolicy: 'pairing'
+      },
+      mode: 'account',
+      accountId: 'bot-sales',
+      validateAppId: () => true,
+      validateAccountId: () => true,
+      validateRoutingMode: () => true,
+      validateDmPolicy: () => true,
+      validateChatId: () => true
+    }),
+    /fixed to open/
+  );
 });
 
 test('validateQuickModeOptions throws on invalid chat id', () => {

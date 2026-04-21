@@ -44,8 +44,6 @@ function buildAccountConfig(options, feishu, deepClone) {
 
   delete account.botName;
 
-  if (options.dmpolicy) account.dmPolicy = options.dmpolicy;
-
   const inheritKeys = [
     'connectionMode', 'requireMention', 'dmPolicy', 'allowFrom',
     'groupAllowFrom', 'groupPolicy', 'groups', 'streaming'
@@ -56,6 +54,9 @@ function buildAccountConfig(options, feishu, deepClone) {
       account[key] = deepClone(feishu[key]);
     }
   }
+
+  // Keep private chat policy deterministic for every created account.
+  account.dmPolicy = 'open';
 
   return account;
 }
