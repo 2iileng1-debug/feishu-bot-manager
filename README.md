@@ -2,7 +2,6 @@
 
 安全地新增或更新 OpenClaw 飞书机器人账户，并在读取 `app-id/app-secret` 之前执行 Agent 创建前置流程（直接创建 / 先梳理需求），自动注入治理与记忆基线。
 
-> 建议仓库名：`feishu-bot-manager`
 
 ## 项目简介
 
