@@ -61,6 +61,84 @@ function buildAccountConfig(options, feishu, deepClone) {
   return account;
 }
 
+const FEISHU_OUTBOUND_TOOL_ALLOWLIST = [
+  'message',
+  'feishu_chat',
+  'feishu_im_user_message',
+  'feishu_im_user_get_messages',
+  'feishu_im_user_get_thread_messages',
+  'feishu_search_user',
+  'feishu_get_user'
+];
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeToolList(existing, additions) {
+  const seen = new Set();
+  const merged = [];
+  const source = Array.isArray(existing) ? existing : [];
+  for (const item of source.concat(additions)) {
+    const normalized = String(item || '').trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    merged.push(normalized);
+  }
+  return merged;
+}
+
+function ensureAgentOutboundMessagingConfig(config, agentId, agentWorkspace = '') {
+  if (!agentId) return false;
+
+  if (!isPlainObject(config.agents)) config.agents = {};
+  if (!Array.isArray(config.agents.list)) config.agents.list = [];
+
+  let changed = false;
+  const list = config.agents.list;
+  const found = list.find((item) => isPlainObject(item) && item.id === agentId);
+  const agent = found || { id: agentId };
+
+  if (!found) {
+    list.push(agent);
+    changed = true;
+  }
+
+  if (agentWorkspace && typeof agent.workspace !== 'string') {
+    agent.workspace = agentWorkspace;
+    changed = true;
+  }
+
+  if (!isPlainObject(agent.tools)) {
+    agent.tools = {};
+    changed = true;
+  }
+
+  const nextAlsoAllow = mergeToolList(agent.tools.alsoAllow, FEISHU_OUTBOUND_TOOL_ALLOWLIST);
+  if (!Array.isArray(agent.tools.alsoAllow) || nextAlsoAllow.length !== agent.tools.alsoAllow.length) {
+    agent.tools.alsoAllow = nextAlsoAllow;
+    changed = true;
+  }
+
+  if (!isPlainObject(agent.tools.byProvider)) {
+    agent.tools.byProvider = {};
+    changed = true;
+  }
+  if (!isPlainObject(agent.tools.byProvider.feishu)) {
+    agent.tools.byProvider.feishu = {};
+    changed = true;
+  }
+
+  const providerPolicy = agent.tools.byProvider.feishu;
+  const nextProviderAllow = mergeToolList(providerPolicy.alsoAllow, FEISHU_OUTBOUND_TOOL_ALLOWLIST);
+  if (!Array.isArray(providerPolicy.alsoAllow) || nextProviderAllow.length !== providerPolicy.alsoAllow.length) {
+    providerPolicy.alsoAllow = nextProviderAllow;
+    changed = true;
+  }
+
+  return changed;
+}
+
 function getRestoreCommand(backupPath, configPath, platform) {
   if (platform === 'win32') {
     return `Copy-Item -LiteralPath "${backupPath}" -Destination "${configPath}" -Force`;
@@ -78,6 +156,7 @@ function formatSummaryLines({ configPath, accountId, mode, agentId, chatId, dryR
   lines.push(`  Routing mode: ${mode}`);
   lines.push(`  Dry run: ${dryRun ? 'yes' : 'no'}`);
   lines.push(`  Set dmScope: ${setDmScope ? 'yes' : 'no'}`);
+  lines.push(`  Feishu outbound enable: ${agentId ? 'yes (agent tools allowlisted)' : 'no (no agent-id)'}`);
   lines.push(`  Restart gateway: ${restart ? 'yes' : 'no'}`);
   if (agentId) lines.push(`  Agent: ${agentId}`);
   if (chatId) lines.push(`  Group chat: ${chatId}`);
@@ -88,8 +167,10 @@ function formatSummaryLines({ configPath, accountId, mode, agentId, chatId, dryR
 
 module.exports = {
   ensureFeishuConfig,
+  ensureAgentOutboundMessagingConfig,
   upsertBinding,
   buildAccountConfig,
   getRestoreCommand,
-  formatSummaryLines
+  formatSummaryLines,
+  FEISHU_OUTBOUND_TOOL_ALLOWLIST
 };

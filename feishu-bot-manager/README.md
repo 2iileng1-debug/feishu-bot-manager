@@ -43,6 +43,7 @@
 - 本地校验 + `openclaw config validate --json`
 - 默认不自动重启 Gateway（`--restart` 才重启）
 - 输出 rollback 命令，便于快速恢复
+- 当提供 `--agent-id` 时，自动补齐该 Agent 的 Feishu outbound 基线（工具 allowlist + `TOOLS.md` 排查/验收清单）
 
 ## 参数
 

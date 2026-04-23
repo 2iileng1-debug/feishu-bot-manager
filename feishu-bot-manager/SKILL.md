@@ -68,6 +68,7 @@ https://open.feishu.cn/page/openclaw?form=multiAgent
 2. 本地校验 + `openclaw config validate --json`
 3. 校验失败阻止写入
 4. 默认不自动重启 Gateway（需显式 `--restart`）
+5. 提供 `--agent-id` 时自动给该 Agent 注入 Feishu outbound 基线（工具 allowlist + TOOLS.md runbook）
 
 ## 命令示例
 

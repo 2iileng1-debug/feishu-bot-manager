@@ -24,6 +24,7 @@ const {
 } = require('./lib/workspace-bootstrap');
 const {
   ensureFeishuConfig,
+  ensureAgentOutboundMessagingConfig,
   upsertBinding,
   buildAccountConfig,
   getRestoreCommand,
@@ -139,6 +140,15 @@ function quickMode(options) {
     upsertBinding,
     log
   });
+
+  if (options.agentid) {
+    const agentPolicyChanged = ensureAgentOutboundMessagingConfig(candidate, options.agentid, options.agentworkspace);
+    if (agentPolicyChanged) {
+      log.success(`Prepared Feishu outbound tools for agent: ${options.agentid}`);
+    } else {
+      log.info(`Feishu outbound tools already configured for agent: ${options.agentid}`);
+    }
+  }
 
   const validationResult = validateCandidateConfig({
     candidate,

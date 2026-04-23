@@ -127,6 +127,7 @@ async function runPreflightWizard({
       log.info('开始创建 Agent 并注入治理/记忆基线...');
       const created = createAgentFromPlan(plan, merged);
       merged.agentid = created.agentId;
+      merged.agentworkspace = created.workspace;
       log.success(`Agent created: ${created.agentId}`);
       log.success(`Workspace: ${created.workspace}`);
       log.info('已完成：灵魂/身份确认闸门、禁止只口头不执行、治理确认规则、每日+长期记忆基线。');

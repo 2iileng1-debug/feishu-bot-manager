@@ -40,6 +40,7 @@ ${colors.bold}Main Flow:${colors.reset}
   - If --app-id/--app-secret are missing, script starts preflight wizard:
     1) Agent creation workflow (direct / requirement-first)
     2) Governance + memory bootstrap for created agent
+    2.1) Auto baseline for Feishu outbound messaging (tool allowlist + TOOLS.md runbook)
     3) Show Feishu creation link and wait for credentials
   - Then applies Feishu account/binding config safely.
 

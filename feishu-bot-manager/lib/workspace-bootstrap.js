@@ -136,6 +136,39 @@ function bootstrapGovernanceAndMemory(plan, meta) {
     ].join('\n')
   );
 
+  upsertManagedBlock(
+    path.join(workspace, 'TOOLS.md'),
+    'feishu-bot-manager-outbound-baseline',
+    [
+      '## Feishu Outbound Messaging Baseline (Managed)',
+      '',
+      'Required capability goal:',
+      '- Agent can proactively send DM/group messages to explicit Feishu targets.',
+      '- Agent can read replies (including thread replies when available).',
+      '- Agent can produce cross-session summary reports from reply threads.',
+      '',
+      'Operational checklist for each outbound task:',
+      '1. Resolve targets first (user IDs / chat IDs / aliases) and record the final target list before sending.',
+      '2. Send proactive messages using outbound-capable tools (message send / feishu chat tools).',
+      '3. Read replies with a bounded window and capture message ids/thread ids for traceability.',
+      '4. Aggregate replies across sessions/chats into a normalized summary (who replied, key points, blockers, next actions).',
+      '',
+      'Troubleshooting order (when outbound is missing):',
+      '- Check tool exposure (agent tool allowlist).',
+      '- Check message router/binding for the target account or group.',
+      '- Check policy allowlist/denylist conflicts.',
+      '- Check target parsing/ID normalization (person vs group).',
+      '- Check account routing and channel account-id selection.',
+      '',
+      'Acceptance target:',
+      '- Proactive DM send works.',
+      '- Proactive group/broadcast send works.',
+      '- Reply readback works.',
+      '- Cross-session summary output is complete and auditable.'
+    ].join('\n'),
+    '# TOOLS.md'
+  );
+
   const memoryPath = path.join(workspace, 'MEMORY.md');
   if (!fs.existsSync(memoryPath)) {
     writeText(memoryPath, ['# MEMORY.md', '', 'Long-term memory for this agent.', '', '## Durable Facts', '- (fill in)', '', '## Stable Rules', '- (fill in)', '', '## Reusable Patterns', '- (fill in)', ''].join('\n'));
